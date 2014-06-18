@@ -5,7 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
-public static class Symlink {
+static class Symlink {
   // Thanks to http://chrisbensen.blogspot.com/2010/06/getfinalpathnamebyhandle.html?showComment=1285905429459#c3690594526243963646
 
   private const int FILE_SHARE_READ = 1;
