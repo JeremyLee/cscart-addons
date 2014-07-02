@@ -78,15 +78,28 @@ class Program {
   }
   
   static void CreateLinksCommand(string[] args) {
-    if(args.Length != 3) {
+    string addonName;
+    string cscartPath;
+    string addonDirectory;
+    
+    if(args.Length < 2 || args.Length > 3) {
       ShowUsage();
       return;
+    } else if (args.Length == 2) {
+      addonName = args[1];
+      addonDirectory = Path.Combine(Environment.CurrentDirectory, addonName);
+      if(File.Exists(Path.Combine(addonDirectory, ".cscart"))) {
+        cscartPath = File.ReadAllText(Path.Combine(addonDirectory, ".cscart"));
+      } else {
+        ShowUsage();
+        return;
+      }
+    } else {
+      addonName = args[1];
+      cscartPath = args[2];
+      addonDirectory = Path.Combine(Environment.CurrentDirectory, addonName);
     }
 
-    string addonName = args[1];
-    string cscartPath = args[2];
-
-    string addonDirectory = Path.Combine(Environment.CurrentDirectory, addonName);
 
     var addonFolders = new Dictionary<string, string>();
     var foldersExistingInCSCart = new List<string>();
