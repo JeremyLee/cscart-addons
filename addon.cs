@@ -136,14 +136,32 @@ class Program {
       Console.WriteLine("No symlinks to create...");
       return;
     }
-
-    if (RestartElevated()) {
-      Console.WriteLine("Creating the following symlinks:");
+    
+    if(!restarted) {
+      Console.Write("\r\nDo you want to create the following symlinks? (y/n) ");
       foreach (var link in addonFolders) {
         Console.WriteLine("{0} --> {1}", link.Key, link.Value);
       }
+
+      while(true) {
+        var c = Console.ReadKey().KeyChar;
+        if(c == 'y') {
+          break;
+        } else if(c == 'n') {
+          Console.WriteLine("Exiting");
+          return;
+        }
+        Console.Write("\r\nDo you want to create the preceding symlinks? (y/n) ");
+      }
+    }
+    
+    if (!IsElevated()) {
+      Console.WriteLine("Administrator privileges are required to create symlinks.\r\n\r\nElevating...");
+      System.Threading.Thread.Sleep(1500);
+      RestartElevated();
       return;
     }
+    
     bool errored = false;
     Console.WriteLine("Creating the following symlinks:");
     foreach(var link in addonFolders) {
@@ -229,5 +247,9 @@ cscs.exe addon createfolder addon_name [cscart_path] [folder_id]
 
     Process.Start(startInfo);
     return true;
+  }
+  
+  internal static bool IsElevated() {
+    return new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
   }
 }
