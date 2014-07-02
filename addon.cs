@@ -10,6 +10,7 @@ using System.IO;
 using System.Text;
 
 class Program {
+  static bool restarted = false;
   static string[][] folders = new string[][] {
     new string[] {
       "/app/addons",
@@ -45,6 +46,13 @@ class Program {
     if(args.Length == 0) {
       ShowUsage();
       return;
+    }
+    
+    if(args[args.Length - 1] == "restarted") {
+      restarted = true;
+      string[] newArgs = new string[args.Length - 1];
+      Array.Copy(args, 0, newArgs, 0, args.Length - 1);
+      args = newArgs;
     }
 
     switch(args[0]) {
@@ -192,16 +200,18 @@ cscs.exe addon createfolder addon_name [cscart_path] [folder_id]
     if (new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
       return false;
     
-    string args = "";
+    StringBuilder args = new StringBuilder();
+    
     string[] arguments = Environment.GetCommandLineArgs();
     for (int i = 1; i < arguments.Length; i++)
-      args += "\"" + arguments[i] + "\" ";
+      args.AppendFormat("\"{0}\" ", arguments[i]);
 
+    args.Append(" \"restarted\"");
     ProcessStartInfo startInfo = new ProcessStartInfo();
     startInfo.UseShellExecute = true;
     startInfo.WorkingDirectory = Environment.CurrentDirectory;
     startInfo.FileName = System.Windows.Forms.Application.ExecutablePath;
-    startInfo.Arguments = args;
+    startInfo.Arguments = args.ToString();
     startInfo.Verb = "runas";
 
     Process.Start(startInfo);
