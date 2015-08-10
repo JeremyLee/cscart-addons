@@ -1,6 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 
+if not exist "releases" mkdir releases
+
 git describe --abbrev=0 --tags > temp
 set /p tag=<temp
 
