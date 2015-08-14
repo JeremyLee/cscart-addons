@@ -1,1 +1,12 @@
 addon.exe
+/node_modules/
+
+bri_catalog_form/
+bri_changes/
+bri_locations/
+color_swatches/
+custom_locations/
+form_builder/
+google_tag_manager/
+package.js
+subcategory_products/
