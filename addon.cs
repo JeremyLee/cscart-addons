@@ -66,7 +66,7 @@ class Program {
       
         break;
       case "createfolder":
-      
+        CreateFolderCommand(args);
         break;
       case "showfolders":
         ShowFolders();
@@ -75,6 +75,87 @@ class Program {
         ShowUsage(true);
         break;
     }
+  }
+  
+  static void CreateFolderCommand(string[] args) {
+    if (!IsElevated()) {
+      Console.WriteLine("Administrator privileges are required to create symlinks.\r\n\r\nElevating...");
+      System.Threading.Thread.Sleep(1500);
+      RestartElevated();
+      return;
+    }
+    
+    string addonName;
+    string cscartPath;
+    string addonDirectory;
+
+    if(args.Length < 2 || args.Length > 3) {
+      ShowUsage();
+      return;
+    } else if (args.Length == 2) {
+      addonName = args[1];
+      if(!GetCSCartPath(addonName, out addonDirectory, out cscartPath)) {
+        ShowUsage();
+        return;
+      }
+    } else {
+      addonName = args[1];
+      cscartPath = args[2];
+      addonDirectory = Path.Combine(Environment.CurrentDirectory, addonName);
+    }
+    
+    ShowFolders();
+    int folderID;
+    
+    while(true) {
+      Console.Write("Press the number of the folder you wish to create and press enter.\r\n To cancel, just press enter: > ");
+      string input = Console.ReadLine();
+      if(input.Length == 0) {
+        return;
+      }
+      if(int.TryParse(input, out folderID) && folderID >= 0 && folderID < foldersFlattened.Length)
+        break;
+    }
+    string cscartFolderPath = Path.Combine(cscartPath, foldersFlattened[folderID], addonName);
+    
+    bool copyIfExist = false;
+    if(Directory.Exists(cscartFolderPath)) {
+      while(true) {
+        Console.Write("The directory you specified already exists in the CS-Cart Installation.\r\nDo you want to move the contents to the local addon folder and create a symlink? (y or n) : ");
+        string result = Console.ReadLine().ToLower();
+        if(result == "y") {
+          copyIfExist = true;
+          break;
+        } else if(result == "n") {
+          copyIfExist = false;
+          break;
+        } else if(result == "c")
+          return;
+      }
+    }
+    
+    CreateFolder(cscartPath, addonDirectory, addonName, foldersFlattened[folderID], copyIfExist);
+    Console.ReadKey();
+  }
+  
+  static bool CreateFolder(string cscart, string addonDirectory, string addonName, string folder, bool copyIfExist) {
+    string cscartFolderPath = Path.Combine(cscart, folder, addonName);
+    string addonFolderPath = Path.Combine(addonDirectory, folder, addonName);
+    if(Directory.Exists(addonFolderPath)) {
+      Console.WriteLine("The directory '{0}' already exists and can not be created.", addonFolderPath.Replace('\\', '/'));
+      return false;
+    }
+    
+    
+    if(!Directory.Exists(cscartFolderPath)) {
+      Directory.CreateDirectory(addonFolderPath);
+    } else if(copyIfExist) {
+      Console.Write("Found matching folder in CS-Cart directory. Moving files to the local directory and creating symlink...");
+      MoveDirectory(cscartFolderPath, addonFolderPath);
+      Symlink.CreateLink(cscartFolderPath, addonFolderPath);
+    }
+    
+    return true;
   }
   
   static void CreateLinksCommand(string[] args) {
@@ -87,10 +168,7 @@ class Program {
       return;
     } else if (args.Length == 2) {
       addonName = args[1];
-      addonDirectory = Path.Combine(Environment.CurrentDirectory, addonName);
-      if(File.Exists(Path.Combine(addonDirectory, ".cscart"))) {
-        cscartPath = File.ReadAllText(Path.Combine(addonDirectory, ".cscart"));
-      } else {
+      if(!GetCSCartPath(addonName, out addonDirectory, out cscartPath)) {
         ShowUsage();
         return;
       }
@@ -178,6 +256,16 @@ class Program {
       Console.ReadKey();
     }
   }
+  
+  static bool GetCSCartPath(string addonName, out string addonDirectory, out string cscartPath) {
+    addonDirectory = Path.Combine(Environment.CurrentDirectory, addonName);
+    if(File.Exists(Path.Combine(addonDirectory, ".cscart"))) {
+      cscartPath = File.ReadAllText(Path.Combine(addonDirectory, ".cscart"));
+      return true;
+    }
+    cscartPath = null;
+    return false;
+  }
 
   static void ShowFolders() {
     int i = 0;
@@ -251,5 +339,41 @@ cscs.exe addon createfolder addon_name [cscart_path] [folder_id]
   
   internal static bool IsElevated() {
     return new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
+  }
+  
+  public static void MoveDirectory(string source, string target)
+  {
+    var stack = new Stack<Folders>();
+    stack.Push(new Folders(source, target));
+
+    while (stack.Count > 0)
+    {
+      var folders = stack.Pop();
+      Directory.CreateDirectory(folders.Target);
+      foreach (var file in Directory.GetFiles(folders.Source, "*.*"))
+      {
+        string targetFile = Path.Combine(folders.Target, Path.GetFileName(file));
+        if (File.Exists(targetFile)) File.Delete(targetFile);
+        File.Move(file, targetFile);
+      }
+
+      foreach (var folder in Directory.GetDirectories(folders.Source))
+      {
+        stack.Push(new Folders(folder, Path.Combine(folders.Target, Path.GetFileName(folder))));
+      }
+    }
+    Directory.Delete(source, true);
+  }
+  
+  public class Folders
+  {
+    public string Source { get; private set; }
+    public string Target { get; private set; }
+
+    public Folders(string source, string target)
+    {
+      Source = source;
+      Target = target;
+    }
   }
 }
